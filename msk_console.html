@@ -6,188 +6,284 @@
 <title>msk.py console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Martian+Mono:wght@300;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Unbounded:wght@300;500;700;900&display=swap">
 <style>
-  /* Layout: терминал во всю высоту — REPL слева, живая watch-панель справа,
-     снизу статус-строка в духе tmux. На телефоне панель сворачивается в полосу над консолью.
-     Палитра: ночная Москва + два цвета логотипа Python (жёлтый промпт, синие builtins). */
+  /* Layout: «пульт» в духе ночного табло — терминал слева, справа живая колонна:
+     перекатные цифры, светодиодная шкала секунд, полоса дня с восходом/закатом.
+     Палитра: тёплая угольная ночь + раскалённый оранжевый (accent) и янтарь (accent2).
+     Типографика: Unbounded — бренд и часы; JetBrains Mono — всё, что набирается. */
   :root {
     color-scheme: dark;
-    --bg:       #0b0f17;
-    --surface:  #111724;
-    --surface2: #161e2e;
-    --line:     #222c3f;
-    --line2:    #2e3a52;
-    --fg:       #d6dde8;
-    --dim:      #7b879b;
-    --dimmer:   #4f5a6e;
-    --py-y:     #ffd43b;
-    --py-b:     #5aa2e0;
-    --sel:      rgba(90, 162, 224, .26);
-    --s-str:    #a8d58f;
-    --s-num:    #f2a65a;
-    --s-kw:     #c79bd8;
-    --s-op:     #8fa2ba;
-    --s-cmt:    #5d6a80;
-    --ok:       #5fd394;
-    --warn:     #f4c451;
-    --bad:      #ff6e6e;
-    --ghost:    #46526a;
-    --shadow:   0 18px 50px rgba(0, 0, 0, .45);
+    --bg:       #0c0806;
+    --bg2:      #140d09;
+    --surface:  rgba(24, 16, 12, .78);
+    --surface2: rgba(38, 25, 18, .72);
+    --solid:    #17100c;
+    --line:     rgba(255, 140, 60, .12);
+    --line2:    rgba(255, 140, 60, .24);
+    --fg:       #f4e9e1;
+    --dim:      #a8968a;
+    --dimmer:   #6c5c52;
+    --acc:      #ff7a1a;
+    --acc2:     #ffb03a;
+    --acc3:     #ff3d5a;
+    --acc-soft: rgba(255, 122, 26, .16);
+    --glow:     rgba(255, 122, 26, .55);
+    --sel:      rgba(255, 122, 26, .28);
+    --s-str:    #b9e27c;
+    --s-num:    #ffcf6b;
+    --s-kw:     #ff6b8b;
+    --s-bi:     #ff9a3c;
+    --s-op:     #b59f92;
+    --s-cmt:    #7d6a5f;
+    --ok:       #4fe0a0;
+    --warn:     #ffc04d;
+    --bad:      #ff5470;
+    --ghost:    #5d4b40;
+    --night:    #1d1410;
+    --shadow:   0 30px 80px -20px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 122, 26, .05);
 
     --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
-    --f-disp: "Martian Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    --f-disp: "Unbounded", "JetBrains Mono", system-ui, sans-serif;
     --fs: 13.5px;
-    --lh: 1.55;
+    --lh: 1.6;
+    --r: 16px;
+    --ease: cubic-bezier(.2, .8, .2, 1);
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
       color-scheme: light;
-      --bg: #f4f5f8; --surface: #ffffff; --surface2: #eef1f6; --line: #dde2eb; --line2: #c9d0dc;
-      --fg: #1b2333; --dim: #5f6a7c; --dimmer: #97a0b0; --py-y: #9a6a00; --py-b: #2266b0;
-      --sel: rgba(34, 102, 176, .18); --s-str: #2e7d32; --s-num: #b35309; --s-kw: #8a3fa8;
-      --s-op: #56657d; --s-cmt: #8d97a8; --ok: #13894c; --warn: #9a6a00; --bad: #c62828;
-      --ghost: #b3bbc8; --shadow: 0 18px 50px rgba(30, 50, 80, .14);
+      --bg: #fbf4ec; --bg2: #f6e9dc; --surface: rgba(255, 252, 248, .82); --surface2: rgba(250, 236, 222, .8); --solid: #fffaf5;
+      --line: rgba(200, 80, 0, .13); --line2: rgba(200, 80, 0, .26);
+      --fg: #2a1a10; --dim: #7a6152; --dimmer: #ae9787;
+      --acc: #e85d00; --acc2: #f08a00; --acc3: #d6264a; --acc-soft: rgba(232, 93, 0, .12); --glow: rgba(232, 93, 0, .35); --sel: rgba(232, 93, 0, .2);
+      --s-str: #3d8a1c; --s-num: #b86e00; --s-kw: #c8234f; --s-bi: #d45500; --s-op: #8a7466; --s-cmt: #a8907f;
+      --ok: #0f8f5a; --warn: #a86a00; --bad: #cf2346; --ghost: #cdb8a8; --night: #e9d6c5;
+      --shadow: 0 30px 70px -25px rgba(120, 50, 0, .28), 0 0 0 1px rgba(232, 93, 0, .06);
     }
   }
   :root[data-theme="light"] {
     color-scheme: light;
-    --bg: #f4f5f8; --surface: #ffffff; --surface2: #eef1f6; --line: #dde2eb; --line2: #c9d0dc;
-    --fg: #1b2333; --dim: #5f6a7c; --dimmer: #97a0b0; --py-y: #9a6a00; --py-b: #2266b0;
-    --sel: rgba(34, 102, 176, .18); --s-str: #2e7d32; --s-num: #b35309; --s-kw: #8a3fa8;
-    --s-op: #56657d; --s-cmt: #8d97a8; --ok: #13894c; --warn: #9a6a00; --bad: #c62828;
-    --ghost: #b3bbc8; --shadow: 0 18px 50px rgba(30, 50, 80, .14);
+    --bg: #fbf4ec; --bg2: #f6e9dc; --surface: rgba(255, 252, 248, .82); --surface2: rgba(250, 236, 222, .8); --solid: #fffaf5;
+    --line: rgba(200, 80, 0, .13); --line2: rgba(200, 80, 0, .26);
+    --fg: #2a1a10; --dim: #7a6152; --dimmer: #ae9787;
+    --acc: #e85d00; --acc2: #f08a00; --acc3: #d6264a; --acc-soft: rgba(232, 93, 0, .12); --glow: rgba(232, 93, 0, .35); --sel: rgba(232, 93, 0, .2);
+    --s-str: #3d8a1c; --s-num: #b86e00; --s-kw: #c8234f; --s-bi: #d45500; --s-op: #8a7466; --s-cmt: #a8907f;
+    --ok: #0f8f5a; --warn: #a86a00; --bad: #cf2346; --ghost: #cdb8a8; --night: #e9d6c5;
+    --shadow: 0 30px 70px -25px rgba(120, 50, 0, .28), 0 0 0 1px rgba(232, 93, 0, .06);
   }
+
+  @property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     margin: 0;
-    background: var(--bg);
+    background: radial-gradient(120% 90% at 85% -10%, var(--bg2), var(--bg) 60%) fixed, var(--bg);
     color: var(--fg);
     font: var(--fs)/var(--lh) var(--f-mono);
-    font-variant-ligatures: contextual;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
   }
   ::selection { background: var(--sel); }
   button { font: inherit; color: inherit; }
-  :focus-visible { outline: 2px solid var(--py-b); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
+  #bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+  .grain {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .5;
+    background-image: radial-gradient(var(--line) 1px, transparent 1.2px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(80% 70% at 50% 40%, #000, transparent);
+  }
 
   .app {
+    position: relative; z-index: 1;
     height: 100%;
     display: grid;
     grid-template-rows: auto 1fr auto;
     padding-inline: max(16px, env(safe-area-inset-left, 0px));
-    padding-block: 10px 0;
-    gap: 10px;
+    padding-block: 12px 0;
+    gap: 12px;
   }
 
   /* ---------- верхняя полоса ---------- */
-  .bar { display: flex; align-items: center; gap: 12px; min-width: 0; }
-  .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; white-space: nowrap; overflow: hidden; }
-  .brand b { font-family: var(--f-disp); font-weight: 700; letter-spacing: -.02em; font-size: 15px; }
-  .brand .chev { color: var(--py-y); font-weight: 700; }
-  .brand .sub { color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
-  .bar-r { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-  .btn {
-    height: 30px; min-width: 30px; padding: 0 9px;
-    border: 1px solid var(--line); background: var(--surface); border-radius: 7px;
-    cursor: pointer; color: var(--dim); display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    transition: color .15s, border-color .15s, background .15s;
+  .bar { display: flex; align-items: center; gap: 14px; min-width: 0; animation: drop .7s var(--ease) both; }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; white-space: nowrap; overflow: hidden; }
+  .chev { display: inline-flex; font-weight: 700; color: var(--acc); letter-spacing: -.1em; }
+  .chev i { font-style: normal; animation: chev 1.6s infinite; opacity: .25; }
+  .chev i:nth-child(2) { animation-delay: .18s; }
+  .chev i:nth-child(3) { animation-delay: .36s; }
+  @keyframes chev { 0%, 60%, 100% { opacity: .25; } 20% { opacity: 1; text-shadow: 0 0 12px var(--glow); } }
+  .logo-t {
+    font-family: var(--f-disp); font-weight: 900; font-size: 19px; letter-spacing: -.03em;
+    background: linear-gradient(100deg, var(--acc3), var(--acc) 35%, var(--acc2) 55%, var(--acc) 75%, var(--acc3));
+    background-size: 220% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: sheen 6s linear infinite;
   }
-  .btn:hover { color: var(--fg); border-color: var(--line2); }
-  .btn.on { color: var(--py-y); border-color: var(--line2); }
+  @keyframes sheen { to { background-position: -220% 0; } }
+  .brand .sub { color: var(--dim); overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+  .brand .ver { font-size: 10.5px; color: var(--acc); border: 1px solid var(--line2); border-radius: 99px; padding: 1px 8px; letter-spacing: .06em; }
+  .bar-r { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .btn {
+    position: relative; overflow: hidden;
+    height: 34px; min-width: 34px; padding: 0 12px;
+    border: 1px solid var(--line); background: var(--surface); border-radius: 10px;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    cursor: pointer; color: var(--dim); display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
+    transition: color .2s, border-color .2s, transform .15s var(--ease), box-shadow .25s;
+  }
+  .btn:hover { color: var(--fg); border-color: var(--line2); box-shadow: 0 0 0 4px var(--acc-soft); }
+  .btn:active { transform: scale(.95); }
+  .btn.on { color: var(--acc); border-color: var(--line2); }
   .btn kbd { font: inherit; font-size: 11px; color: var(--dimmer); }
-  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dimmer); }
-  .pill.ok .dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dimmer); position: relative; }
+  .pill.ok .dot { background: var(--ok); }
+  .pill.ok .dot::after, .pill.busy .dot::after {
+    content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid currentColor; color: var(--ok);
+    animation: ping 1.8s var(--ease) infinite;
+  }
+  .pill.busy .dot { background: var(--acc); }
+  .pill.busy .dot::after { color: var(--acc); animation-duration: .9s; }
   .pill.warn .dot { background: var(--warn); }
   .pill.bad .dot { background: var(--bad); }
-  .pill.busy .dot { background: var(--py-b); animation: pulse 1s infinite; }
-  @keyframes pulse { 50% { opacity: .25; } }
+  @keyframes ping { from { transform: scale(.6); opacity: .9; } to { transform: scale(1.9); opacity: 0; } }
 
   /* ---------- основная зона ---------- */
-  .main { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 10px; }
+  .main { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 12px; }
   .app.nopanel .main { grid-template-columns: minmax(0, 1fr); }
   .app.nopanel .panel { display: none; }
 
-  .term {
-    min-height: 0; min-width: 0;
-    display: grid; grid-template-rows: 1fr auto;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-    box-shadow: var(--shadow); overflow: hidden;
+  .glass {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2);
   }
-  .screen { overflow-y: auto; overflow-x: hidden; padding: 14px 16px 10px; overscroll-behavior: contain; cursor: text; }
-  .screen::-webkit-scrollbar, .panel::-webkit-scrollbar { width: 9px; }
-  .screen::-webkit-scrollbar-thumb, .panel::-webkit-scrollbar-thumb { background: var(--line); border-radius: 9px; border: 2px solid var(--surface); }
+  .term {
+    position: relative; min-height: 0; min-width: 0;
+    display: grid; grid-template-rows: auto 1fr auto; overflow: hidden;
+    animation: rise .8s .1s var(--ease) both;
+  }
+  .term::before {             /* бегущая линия развёртки */
+    content: ""; position: absolute; left: 0; right: 0; height: 120px; top: -120px; pointer-events: none; z-index: 2;
+    background: linear-gradient(transparent, var(--acc-soft), transparent);
+    opacity: .5; animation: scan 9s linear infinite;
+  }
+  @keyframes scan { to { top: 100%; } }
+  .tbar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--dim); font-size: 12px; }
+  .tbar .lights { display: flex; gap: 6px; }
+  .tbar .lights i { width: 11px; height: 11px; border-radius: 50%; background: var(--line2); }
+  .tbar .lights i:first-child { background: var(--acc3); }
+  .tbar .lights i:nth-child(2) { background: var(--acc2); }
+  .tbar .lights i:nth-child(3) { background: var(--acc); box-shadow: 0 0 10px var(--glow); }
+  .tbar .path { margin-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tbar .path b { color: var(--acc); font-weight: 500; }
+  .tbar .tclock { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--fg); }
 
-  .out > * { margin: 0; }
+  .screen { overflow-y: auto; overflow-x: hidden; padding: 14px 18px 12px; overscroll-behavior: contain; cursor: text; scroll-behavior: smooth; }
+  .screen::-webkit-scrollbar, .panel::-webkit-scrollbar { width: 9px; }
+  .screen::-webkit-scrollbar-thumb, .panel::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 9px; border: 3px solid transparent; background-clip: padding-box; }
+
+  .out > * { margin: 0; animation: blkIn .42s var(--ease) both; }
+  @keyframes blkIn { from { opacity: 0; transform: translateY(8px); filter: blur(3px); } }
   .blk { white-space: pre-wrap; word-break: break-word; min-width: 0; }
   .blk + .blk { margin-top: 2px; }
-  .in-echo { color: var(--fg); margin-top: 8px !important; }
-  .in-echo .ps, .ps { color: var(--py-y); font-weight: 700; user-select: none; }
+  .in-echo { margin-top: 12px !important; border-radius: 6px; padding-inline: 6px; margin-inline: -6px !important; animation: echoIn .9s var(--ease) both !important; }
+  @keyframes echoIn { 0% { background: var(--acc-soft); opacity: 0; transform: translateX(-6px); } 30% { opacity: 1; transform: none; } 100% { background: transparent; } }
+  .ps { color: var(--acc); font-weight: 700; user-select: none; text-shadow: 0 0 14px var(--glow); }
   .res { color: var(--fg); }
   .cmt { color: var(--s-cmt); }
   .err { color: var(--bad); }
   .tb { color: var(--dim); }
-  .info { color: var(--dim); }
   .okc { color: var(--ok); }
   .warnc { color: var(--warn); }
   .badc { color: var(--bad); }
-  .ylw { color: var(--py-y); }
-  .blu { color: var(--py-b); }
-  .event { border-left: 2px solid var(--py-y); padding-left: 10px; margin-block: 6px !important; }
+  .ylw { color: var(--acc); }
+  .blu { color: var(--acc2); }
+  .event {
+    position: relative; border: 1px solid var(--line2); border-radius: 10px; padding: 8px 12px;
+    background: linear-gradient(90deg, var(--acc-soft), transparent 70%); margin-block: 8px !important;
+    animation: blkIn .4s var(--ease) both, evGlow 1.6s ease-out 2 !important;
+  }
+  @keyframes evGlow { 0% { box-shadow: 0 0 0 0 var(--glow); } 100% { box-shadow: 0 0 0 14px transparent; } }
   .event .when { color: var(--dim); }
   .banner { color: var(--dim); }
   .banner b { color: var(--fg); font-weight: 500; }
   .banner .logo {
-    font-family: var(--f-disp); font-weight: 700; font-size: 11px; line-height: 1.15;
-    color: var(--py-b); white-space: pre; margin-bottom: 8px; display: block;
+    font-weight: 700; font-size: 12px; line-height: 1.12; white-space: pre; margin: 4px 0 10px; display: block;
+    background: linear-gradient(90deg, var(--acc3), var(--acc), var(--acc2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 12px var(--glow));
   }
-  .banner .logo i { font-style: normal; color: var(--py-y); }
 
   /* подсветка синтаксиса */
   .t-kw { color: var(--s-kw); }
-  .t-bi { color: var(--py-b); }
+  .t-bi { color: var(--s-bi); }
   .t-str { color: var(--s-str); }
   .t-num { color: var(--s-num); }
   .t-op { color: var(--s-op); }
   .t-cmt { color: var(--s-cmt); font-style: italic; }
-  .t-const { color: var(--s-num); font-weight: 500; }
-  .t-mag { color: var(--py-y); }
+  .t-const { color: var(--s-kw); font-weight: 500; }
+  .t-mag { color: var(--acc); font-weight: 700; }
   .t-ghost { color: var(--ghost); }
 
-  /* rich-подобные таблицы */
-  .rt { margin-block: 6px !important; max-width: 100%; overflow-x: auto; }
-  .rt table { border-collapse: separate; border-spacing: 0; border: 1px solid var(--line2); border-radius: 7px; min-width: 0; }
-  .rt caption { text-align: left; color: var(--py-y); font-weight: 700; padding: 0 0 4px 2px; font-style: normal; white-space: nowrap; }
-  .rt caption small { color: var(--dim); font-weight: 400; margin-left: 8px; }
-  .rt th, .rt td { padding: 2px 12px; text-align: left; white-space: nowrap; vertical-align: top; font-variant-numeric: tabular-nums; }
-  .rt th { color: var(--py-b); font-weight: 500; border-bottom: 1px solid var(--line2); }
-  .rt tr:not(:last-child) td { border-bottom: 1px dashed var(--line); }
+  /* rich-таблицы */
+  .rt { margin-block: 8px !important; max-width: 100%; overflow-x: auto; }
+  .rt table {
+    border-collapse: separate; border-spacing: 0; min-width: 0;
+    border: 1px solid var(--line2); border-radius: 12px; overflow: hidden;
+    background: linear-gradient(180deg, var(--acc-soft), transparent 46px), var(--surface2);
+  }
+  .rt caption { text-align: left; color: var(--acc); font-weight: 700; padding: 0 0 6px 2px; white-space: nowrap; letter-spacing: .01em; }
+  .rt caption small { color: var(--dim); font-weight: 400; margin-left: 10px; }
+  .rt th, .rt td { padding: 4px 14px; text-align: left; white-space: nowrap; vertical-align: top; font-variant-numeric: tabular-nums; }
+  .rt th { color: var(--acc2); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; border-bottom: 1px solid var(--line2); }
+  .rt tbody tr { animation: rowIn .45s var(--ease) both; transition: background .15s; }
+  .rt tbody tr:hover { background: var(--acc-soft); }
+  .rt tbody tr:nth-child(2) { animation-delay: .03s; } .rt tbody tr:nth-child(3) { animation-delay: .06s; }
+  .rt tbody tr:nth-child(4) { animation-delay: .09s; } .rt tbody tr:nth-child(5) { animation-delay: .12s; }
+  .rt tbody tr:nth-child(6) { animation-delay: .15s; } .rt tbody tr:nth-child(7) { animation-delay: .18s; }
+  .rt tbody tr:nth-child(8) { animation-delay: .21s; } .rt tbody tr:nth-child(9) { animation-delay: .24s; }
+  .rt tbody tr:nth-child(n+10) { animation-delay: .27s; }
+  @keyframes rowIn { from { opacity: 0; transform: translateX(-10px); } }
+  .rt tr:not(:last-child) td { border-bottom: 1px solid var(--line); }
   .rt td.k { color: var(--dim); }
+  .rt td[data-copy] { cursor: copy; }
+  .rt td[data-copy]:hover { color: var(--acc); }
   .rt td.wrap { white-space: pre-wrap; word-break: break-all; min-width: 18ch; max-width: 70ch; }
-  .rt tr.hi td { background: color-mix(in srgb, var(--py-y) 9%, transparent); }
+  .rt tr.hi td { background: linear-gradient(90deg, var(--acc-soft), transparent); }
+  .rt tr.hi td:first-child { box-shadow: inset 3px 0 0 var(--acc); }
   .rt .num { text-align: right; }
-  .rt .note { color: var(--dim); padding: 4px 2px 0; white-space: normal; }
+  .rt .note { color: var(--dim); padding: 6px 2px 0; white-space: normal; }
 
-  .grid24 { display: grid; grid-template-columns: 14ch repeat(24, minmax(14px, 1fr)); gap: 2px; align-items: center; min-width: 560px; }
+  .grid24 { display: grid; grid-template-columns: 14ch repeat(24, minmax(16px, 1fr)); gap: 3px; align-items: center; min-width: 600px; margin-top: 6px; }
   .grid24 .lbl { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .grid24 .c { height: 16px; border-radius: 3px; background: var(--surface2); font-size: 10px; text-align: center; line-height: 16px; color: var(--dimmer); }
-  .grid24 .c.w { background: color-mix(in srgb, var(--py-b) 55%, transparent); color: var(--fg); }
-  .grid24 .c.all { background: color-mix(in srgb, var(--ok) 65%, transparent); color: var(--fg); }
-  .grid24 .c.now { outline: 1px solid var(--py-y); }
+  .grid24 .c { height: 20px; border-radius: 5px; background: var(--surface2); border: 1px solid var(--line); font-size: 10px; text-align: center; line-height: 18px; color: var(--dimmer); animation: pop .4s var(--ease) both; }
+  .grid24 .c.w { background: linear-gradient(180deg, var(--acc2), var(--acc)); color: #1a0d05; border-color: transparent; }
+  .grid24 .c.all { background: var(--ok); border-color: transparent; box-shadow: 0 0 12px color-mix(in srgb, var(--ok) 50%, transparent); }
+  .grid24 .c.now { outline: 2px solid var(--fg); outline-offset: 1px; }
   .grid24 .hdr { font-size: 10px; color: var(--dim); text-align: center; }
+  @keyframes pop { from { opacity: 0; transform: scale(.6); } }
 
-  .calbox { display: inline-block; }
-  .calbox .t { color: var(--py-y); }
+  .calbox { display: inline-block; line-height: 1.7; }
+  .calbox .t { color: var(--acc); font-weight: 700; }
   .calbox .wk { color: var(--dimmer); }
   .calbox .we { color: var(--s-kw); }
-  .calbox .td { background: var(--py-y); color: var(--bg); border-radius: 3px; }
+  .calbox .td { background: var(--acc); color: #1a0d05; border-radius: 4px; box-shadow: 0 0 14px var(--glow); font-weight: 700; }
 
-  /* поле ввода с подсветкой поверх textarea */
-  .editor { display: flex; align-items: flex-start; gap: 0; margin-top: 8px; }
-  .editor .ps { flex: none; white-space: pre; }
+  /* поле ввода */
+  .editor { display: flex; align-items: flex-start; margin-top: 12px; position: relative; }
+  .editor::before {
+    content: ""; position: absolute; left: -18px; top: 2px; bottom: 2px; width: 3px; border-radius: 3px;
+    background: linear-gradient(var(--acc2), var(--acc)); box-shadow: 0 0 14px var(--glow);
+    opacity: 0; transition: opacity .25s;
+  }
+  .editor:focus-within::before { opacity: 1; }
+  .editor .ps { flex: none; white-space: pre; transition: transform .12s var(--ease); display: inline-block; }
+  .editor.kick .ps { transform: translateX(2px); text-shadow: 0 0 22px var(--acc); }
   .field { position: relative; flex: 1; min-width: 0; }
   .field pre, .field textarea {
     margin: 0; padding: 0; border: 0;
@@ -197,96 +293,174 @@
   .field pre { pointer-events: none; min-height: calc(var(--lh) * 1em); color: var(--fg); }
   .field textarea {
     position: absolute; inset: 0; width: 100%; height: 100%; resize: none; overflow: hidden;
-    background: transparent; color: transparent; caret-color: var(--py-y); outline: none;
+    background: transparent; color: transparent; caret-color: var(--acc); outline: none;
   }
   .busy-line { color: var(--dim); }
-  .busy-line .sp { display: inline-block; width: 1ch; color: var(--py-b); }
+  .busy-line .sp { display: inline-block; width: 1ch; color: var(--acc); text-shadow: 0 0 10px var(--glow); }
 
-  .dock { border-top: 1px solid var(--line); background: var(--surface2); padding: 6px 10px; display: grid; gap: 6px; }
-  .hint { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.55em; font-size: 12.5px; }
-  .hint .fn { color: var(--py-b); }
-  .hint .arg-on { color: var(--py-y); text-decoration: underline; text-underline-offset: 3px; }
-  .hint .cand { color: var(--fg); margin-right: 1.2ch; }
-  .hint .cand.cur { color: var(--bg); background: var(--py-b); border-radius: 3px; padding: 0 3px; }
-  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .dock { border-top: 1px solid var(--line); background: linear-gradient(180deg, transparent, var(--acc-soft)); padding: 8px 12px 10px; display: grid; gap: 8px; }
+  .hint { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.6em; font-size: 12.5px; }
+  .hint .fn { color: var(--s-bi); }
+  .hint .arg-on { color: var(--acc); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+  .hint .cand { color: var(--fg); margin-right: 1.2ch; padding: 0 4px; border-radius: 4px; }
+  .hint .cand.cur { color: #1a0d05; background: var(--acc); box-shadow: 0 0 12px var(--glow); }
+  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-block: 2px; }
   .chips::-webkit-scrollbar { display: none; }
   .chip {
-    flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--fg);
-    padding: 2px 9px; border-radius: 6px; cursor: pointer; font-size: 12.5px; white-space: nowrap;
+    position: relative; overflow: hidden; flex: none;
+    border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+    padding: 3px 11px; border-radius: 99px; cursor: pointer; font-size: 12.5px; white-space: nowrap;
+    transition: border-color .2s, transform .15s var(--ease), box-shadow .25s;
+    animation: pop .5s var(--ease) both;
   }
-  .chip:hover { border-color: var(--py-b); }
-  .chip .t-bi { color: var(--py-b); }
+  .chip::after {
+    content: ""; position: absolute; inset: 0; transform: translateX(-120%);
+    background: linear-gradient(100deg, transparent, var(--acc-soft), transparent);
+    transition: transform .6s var(--ease);
+  }
+  .chip:hover { border-color: var(--acc); box-shadow: 0 0 18px -4px var(--glow); transform: translateY(-1px); }
+  .chip:hover::after { transform: translateX(120%); }
+  .chip:active { transform: scale(.95); }
 
-  /* ---------- watch-панель ---------- */
-  .panel {
-    min-height: 0; overflow-y: auto;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
-    padding: 14px 16px; display: flex; flex-direction: column; gap: 14px;
+  /* ---------- живая колонна ---------- */
+  .panel { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; animation: rise .8s .2s var(--ease) both; }
+  .panel > * { flex: none; }
+  .card { padding: 16px 18px; }
+  .clock { position: relative; overflow: hidden; cursor: default; isolation: isolate; }
+  .clock::before {          /* вращающаяся неоновая рамка */
+    content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; z-index: -1;
+    background: conic-gradient(from var(--ang), transparent 0 60%, var(--acc) 75%, var(--acc2) 82%, transparent 90%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: spin 6s linear infinite;
   }
-  .clock .lbl { display: flex; justify-content: space-between; color: var(--dim); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .clock::after {
+    content: ""; position: absolute; width: 260px; height: 260px; right: -90px; top: -120px; z-index: -1; border-radius: 50%;
+    background: radial-gradient(var(--glow), transparent 65%); opacity: .45; animation: breathe 4s ease-in-out infinite;
+  }
+  @keyframes spin { to { --ang: 360deg; } }
+  @keyframes breathe { 50% { opacity: .2; transform: scale(.85); } }
+  .clock .lbl { display: flex; justify-content: space-between; align-items: center; color: var(--dim); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; }
+  .live { display: inline-flex; align-items: center; gap: 6px; color: var(--acc); font-weight: 700; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 10px var(--acc); animation: blink 1s steps(2, start) infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
   .clk {
-    font-family: var(--f-disp); font-weight: 300; font-size: 40px; line-height: 1.05; letter-spacing: -.04em;
-    font-variant-numeric: tabular-nums; margin-top: 6px; white-space: nowrap;
+    font-family: var(--f-disp); font-weight: 300; font-size: 46px; line-height: 1; letter-spacing: -.02em;
+    margin-top: 14px; white-space: nowrap; display: flex; align-items: flex-end;
   }
-  .clk .colon { color: var(--py-y); }
-  .clk .ms { font-size: 18px; color: var(--dim); letter-spacing: -.02em; }
-  .clk-date { color: var(--dim); margin-top: 4px; }
+  .dg { position: relative; display: inline-block; width: .74em; height: 1.08em; overflow: hidden; }
+  .dg-v { position: absolute; inset: 0; text-align: center; }
+  .dg-v.in { animation: dgIn .5s var(--ease) both; }
+  .dg-v.out { animation: dgOut .5s var(--ease) both; }
+  @keyframes dgIn { from { transform: translateY(85%); opacity: 0; filter: blur(4px); } }
+  @keyframes dgOut { to { transform: translateY(-85%); opacity: 0; filter: blur(4px); } }
+  .dg.hot { color: var(--acc); text-shadow: 0 0 22px var(--glow); }
+  .clk .colon { display: inline-block; width: .32em; text-align: center; color: var(--acc); animation: blink 1s steps(2, start) infinite; transform: translateY(-.06em); }
+  .clk .ms { font-family: var(--f-mono); font-size: 16px; color: var(--dim); margin: 0 0 6px 8px; font-variant-numeric: tabular-nums; min-width: 4ch; }
+  .ticks { display: grid; grid-template-columns: repeat(60, 1fr); gap: 2px; margin-top: 14px; height: 14px; align-items: end; }
+  .ticks i { height: 7px; border-radius: 2px; background: var(--line); transition: background .35s, height .35s var(--ease), box-shadow .35s; }
+  .ticks i:nth-child(5n+1) { height: 11px; }
+  .ticks i.on { background: linear-gradient(var(--acc2), var(--acc)); }
+  .ticks i.cur { height: 14px; background: var(--fg); box-shadow: 0 0 12px var(--acc), 0 0 2px var(--acc); }
+  .clk-date { color: var(--dim); margin-top: 10px; font-size: 12.5px; }
   .clk-date b { color: var(--fg); font-weight: 500; }
-  .sect { display: grid; gap: 1px; }
-  .sect h3 { margin: 0 0 4px; font: 500 11px/1.4 var(--f-mono); color: var(--dimmer); letter-spacing: .1em; text-transform: uppercase; }
+
+  .dayline { position: relative; margin-top: 4px; }
+  .dl-track { position: relative; height: 26px; border-radius: 8px; overflow: visible; border: 1px solid var(--line); }
+  .dl-fill { position: absolute; inset: 0; border-radius: 7px; }
+  .dl-now { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: var(--fg); border-radius: 2px; box-shadow: 0 0 12px var(--acc); transition: left 1s linear; }
+  .dl-now::after { content: ""; position: absolute; left: 50%; top: -5px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 0 var(--glow); animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--glow); } 100% { box-shadow: 0 0 0 12px transparent; } }
+  .dl-labels { position: relative; height: 18px; margin-top: 4px; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .dl-labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .dl-labels span.sun { color: var(--acc2); }
+
+  .sect { display: grid; gap: 2px; }
+  .sect h3 { margin: 0 0 6px; font: 700 10.5px/1.4 var(--f-disp); color: var(--acc); letter-spacing: .18em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  .sect h3::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line2), transparent); }
   .row {
     display: grid; grid-template-columns: 9ch minmax(0, 1fr); gap: 8px; align-items: baseline;
-    padding: 1px 6px; margin-inline: -6px; border-radius: 5px; cursor: pointer; font-variant-numeric: tabular-nums;
+    padding: 2px 8px; margin-inline: -8px; border-radius: 7px; cursor: pointer; font-variant-numeric: tabular-nums;
+    transition: background .15s, transform .15s var(--ease);
   }
-  .row:hover { background: var(--surface2); }
+  .row:hover { background: var(--acc-soft); transform: translateX(2px); }
   .row .k { color: var(--dim); }
   .row .v { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bar10 { color: var(--py-b); letter-spacing: -.5px; }
-  .bar10 i { color: var(--line2); font-style: normal; }
+  .prow { display: grid; grid-template-columns: 7ch minmax(0, 1fr) 6ch; gap: 10px; align-items: center; padding: 3px 0; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .prow .k { color: var(--dim); }
+  .prow .pv { text-align: right; color: var(--fg); }
+  .pbar { position: relative; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .pbar i {
+    position: absolute; inset: 0 auto 0 0; border-radius: inherit;
+    background: linear-gradient(90deg, var(--acc3), var(--acc) 60%, var(--acc2));
+    box-shadow: 0 0 12px var(--glow); transition: width 1s var(--ease);
+  }
+  .pbar i::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .45) 50%, transparent 70%);
+    background-size: 200% 100%; animation: shimmer 2.4s linear infinite;
+  }
+  @keyframes shimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
   .jobs-empty { color: var(--dimmer); }
 
-  /* ---------- статус-строка ---------- */
+  /* ---------- статус-строка (powerline) ---------- */
   .status {
-    display: flex; align-items: stretch; gap: 0; overflow: hidden; white-space: nowrap;
+    display: flex; align-items: stretch; overflow: hidden; white-space: nowrap;
     margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: var(--surface2); border-top: 1px solid var(--line); font-size: 12px; color: var(--dim);
+    background: var(--solid); border-top: 1px solid var(--line); font-size: 12px; color: var(--dim);
   }
-  .status > span { padding: 3px 12px; border-right: 1px solid var(--line); }
-  .status .mode { background: var(--py-b); color: var(--bg); font-weight: 700; border-right: 0; }
-  .status .mode.busy { background: var(--py-y); }
-  .status .grow { flex: 1; border-right: 0; overflow: hidden; text-overflow: ellipsis; }
+  .status > span { padding: 4px 14px; position: relative; }
+  .status > span:not(.mode):not(.grow)::after { content: ""; position: absolute; right: 0; top: 25%; bottom: 25%; width: 1px; background: var(--line2); }
+  .status .mode {
+    background: linear-gradient(90deg, var(--acc3), var(--acc)); color: #1a0d05; font-weight: 700; letter-spacing: .1em;
+    padding-right: 22px; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
+  }
+  .status .mode.busy { background: linear-gradient(90deg, var(--acc), var(--acc2), var(--acc)); background-size: 200% 100%; animation: sheen 1s linear infinite; }
+  .status .grow { flex: 1; overflow: hidden; text-overflow: ellipsis; }
   .status .clock-s { color: var(--fg); font-variant-numeric: tabular-nums; }
 
   .toast {
-    position: fixed; left: 50%; bottom: calc(46px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 12px);
-    background: var(--fg); color: var(--bg); padding: 6px 12px; border-radius: 7px; font-size: 12.5px;
-    opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; z-index: 9; max-width: calc(100% - 32px);
+    position: fixed; left: 50%; bottom: calc(50px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 16px) scale(.96);
+    background: var(--acc); color: #1a0d05; font-weight: 500; padding: 7px 14px; border-radius: 10px; font-size: 12.5px;
+    box-shadow: 0 10px 30px -6px var(--glow);
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .35s var(--ease); z-index: 9; max-width: calc(100% - 32px);
   }
-  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  .flash { position: fixed; inset: 0; pointer-events: none; z-index: 8; box-shadow: inset 0 0 0 0 transparent; }
+  .flash.on { animation: flash 1.2s ease-out 3; }
+  @keyframes flash { 0% { box-shadow: inset 0 0 0 0 transparent; } 15% { box-shadow: inset 0 0 120px 10px var(--glow); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
 
-  /* ---------- узкий экран: панель становится полосой над консолью ---------- */
+  @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.985); } }
+  @keyframes drop { from { opacity: 0; transform: translateY(-12px); } }
+
+  /* ---------- узкий экран ---------- */
   @media (max-width: 860px) {
     :root { --fs: 13px; }
     .main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-    .panel { order: -1; padding: 10px 12px; gap: 8px; max-height: 34vh; }
-    .clk { font-size: 30px; }
-    .clk .ms { font-size: 14px; }
-    .panel .sect { display: none; }
+    .panel { order: -1; overflow: visible; }
+    .card { padding: 12px 14px; }
+    .clk { font-size: 34px; margin-top: 8px; }
+    .clk .ms { font-size: 13px; }
+    .ticks { margin-top: 10px; }
+    .panel > :not(.clock) { display: none; }
     .clock { cursor: pointer; }
-    .app.panel-full .panel .sect { display: grid; }
-    .app.panel-full .panel { max-height: none; }
-    .brand .sub, .btn kbd, .status .hide-s { display: none; }
+    .app.panel-full .panel > * { display: block; }
+    .app.panel-full .panel { max-height: 60vh; overflow-y: auto; }
+    .banner .logo { font-size: 6.4px; }
+    .brand .sub, .brand .ver, .btn kbd, .status .hide-s, .tbar .path { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; animation: none !important; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
   }
 </style>
 </head>
 <body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+<div class="flash" id="flash" aria-hidden="true"></div>
 <div class="app" id="app">
   <header class="bar">
-    <div class="brand"><span class="chev">&gt;&gt;&gt;</span><b>msk.py</b><span class="sub">Python-консоль московского времени</span></div>
+    <div class="brand"><span class="chev"><i>&gt;</i><i>&gt;</i><i>&gt;</i></span><span class="logo-t">msk.py</span><span class="ver">2.1</span><span class="sub">Python-консоль московского времени</span></div>
     <div class="bar-r">
       <button class="btn pill" id="syncPill" type="button" title="Синхронизировать время — sync()"><span class="dot"></span><span id="syncTxt">sync</span></button>
       <button class="btn" id="bTheme" type="button" title="Тема (Alt+T)">◐</button>
@@ -296,7 +470,8 @@
   </header>
 
   <main class="main">
-    <section class="term" aria-label="Консоль">
+    <section class="term glass" aria-label="Консоль">
+      <div class="tbar"><span class="lights"><i></i><i></i><i></i></span><span class="path">~/moscow <b>❯</b> python3 -i msk.py</span><span class="tclock" id="tClock"></span></div>
       <div class="screen" id="screen">
         <div class="out" id="out" role="log" aria-live="polite"></div>
         <div class="editor" id="editor">
@@ -314,15 +489,23 @@
     </section>
 
     <aside class="panel" id="panel" aria-label="Живые показатели">
-      <div class="clock">
-        <div class="lbl"><span>Europe/Moscow · MSK</span><span id="clkOff">UTC+3</span></div>
-        <div class="clk" id="clk">--:--:--</div>
+      <div class="clock glass card">
+        <div class="lbl"><span class="live"><i></i>live · msk</span><span id="clkOff">UTC+3</span></div>
+        <div class="clk" id="clk"></div>
+        <div class="ticks" id="ticks"></div>
         <div class="clk-date" id="clkDate"></div>
       </div>
-      <div class="sect" id="wTime"><h3>time</h3></div>
-      <div class="sect" id="wProg"><h3>progress</h3></div>
-      <div class="sect more" id="wSky"><h3>sky</h3></div>
-      <div class="sect more" id="wJobs"><h3>jobs</h3></div>
+      <div class="glass card">
+        <div class="sect"><h3>день над Москвой</h3></div>
+        <div class="dayline">
+          <div class="dl-track"><div class="dl-fill" id="dlFill"></div><i class="dl-now" id="dlNow"></i></div>
+          <div class="dl-labels" id="dlLabels"></div>
+        </div>
+        <div class="sect" id="wProg" style="margin-top:10px"></div>
+      </div>
+      <div class="glass card sect" id="wTime"><h3>time</h3></div>
+      <div class="glass card sect" id="wSky"><h3>sky</h3></div>
+      <div class="glass card sect" id="wJobs"><h3>jobs</h3></div>
     </aside>
   </main>
 
@@ -3613,6 +3796,8 @@ onEvent = (icon, title, body, sound, times) => {
   playSound(sound || null, times || 2);
   sysNotify(icon + ' ' + title, body || 'msk.py');
   if (!document.hasFocus()) flashTitle(title);
+  const fl = $('#flash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');
+  setTimeout(() => fl.classList.remove('on'), 3700);
   toast(icon + ' ' + title);
   scrollEnd(true);
 };
@@ -4022,7 +4207,11 @@ inp.addEventListener('keydown', e => {
   }
   if (k !== 'ArrowUp' && k !== 'ArrowDown') { hPrefix = null; hIdx = history.length; }
 });
-inp.addEventListener('input', () => { if (rsearch) return; comp = null; render(); });
+let kickT = null;
+inp.addEventListener('input', () => {
+  const ed = $('#editor'); ed.classList.add('kick'); clearTimeout(kickT); kickT = setTimeout(() => ed.classList.remove('kick'), 90);
+  if (rsearch) return; comp = null; render();
+});
 ['click', 'keyup', 'select'].forEach(ev => inp.addEventListener(ev, () => { if (!rsearch) { const g = ghost; render(); if (!g && !ghost) return; } }));
 inp.addEventListener('paste', () => setTimeout(render, 0));
 
@@ -4048,10 +4237,69 @@ if (tzOffset(Date.now(), LOCAL_TZ) !== tzOffset(Date.now(), MSK)) mkRow('#wTime'
 mkRow('#wTime', 'unix', 'unix', { copy: () => String(Math.floor(now() / 1000)) });
 mkRow('#wTime', 'unixms', 'unix_ms', { copy: () => String(Math.floor(now())) });
 mkRow('#wTime', 'sync', 'sync', { run: 'sync()' });
-mkRow('#wProg', 'day', 'day', { run: 'cal()' });
-mkRow('#wProg', 'week', 'week', { run: 'cal()' });
-mkRow('#wProg', 'month', 'month', { run: 'cal()' });
-mkRow('#wProg', 'year', 'year', { run: 'cal(' + wall(Date.now(), MSK).y + ')' });
+const PROG = {};
+for (const [key, run] of [['day', 'cal()'], ['week', 'cal()'], ['month', 'cal()'], ['year', 'cal(' + wall(Date.now(), MSK).y + ')']]) {
+  const r = document.createElement('div');
+  r.className = 'prow'; r.title = 'клик — ' + run;
+  r.innerHTML = '<span class="k">' + key + '</span><span class="pbar"><i></i></span><span class="pv"></span>';
+  r.addEventListener('click', () => submit(run));
+  $('#wProg').appendChild(r);
+  PROG[key] = { fill: r.querySelector('i'), val: r.querySelector('.pv'), last: '' };
+}
+function setProg(key, f) {
+  const p = PROG[key], txt = (f * 100).toFixed(1) + '%';
+  if (p.last === txt) return;
+  p.last = txt; p.fill.style.width = (f * 100).toFixed(2) + '%'; p.val.textContent = txt;
+}
+
+/* --- перекатные цифры и светодиодная шкала секунд --- */
+const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clkEl = $('#clk'), SLOTS = [];
+(() => {
+  const digit = () => { const s = document.createElement('span'); s.className = 'dg'; s.innerHTML = '<span class="dg-v">0</span>'; clkEl.appendChild(s); SLOTS.push({ el: s, v: '0' }); };
+  const colon = () => { const c = document.createElement('span'); c.className = 'colon'; c.textContent = ':'; clkEl.appendChild(c); };
+  digit(); digit(); colon(); digit(); digit(); colon(); digit(); digit();
+  const ms = document.createElement('span'); ms.className = 'ms'; ms.id = 'clkMs'; clkEl.appendChild(ms);
+  SLOTS[5].el.classList.add('hot');
+  $('#ticks').innerHTML = '<i></i>'.repeat(60);
+})();
+const TICKS = Array.from($('#ticks').children);
+function setDigit(slot, ch) {
+  if (slot.v === ch) return;
+  slot.v = ch;
+  if (RM) { slot.el.firstChild.textContent = ch; return; }
+  while (slot.el.childElementCount > 1) slot.el.firstChild.remove();
+  const old = slot.el.firstChild, nw = document.createElement('span');
+  nw.className = 'dg-v in'; nw.textContent = ch;
+  old.className = 'dg-v out';
+  slot.el.appendChild(nw);
+  setTimeout(() => { if (old.parentNode) old.remove(); }, 520);
+}
+let lastSec = -1;
+function setTicks(sec) {
+  if (sec === lastSec) return;
+  lastSec = sec;
+  TICKS.forEach((t, i) => { t.className = i < sec ? 'on' : i === sec ? 'cur' : ''; });
+}
+
+/* --- полоса дня: ночь → рассвет → день → закат, бегунок «сейчас» --- */
+let dayKey = '';
+function renderDayline(t, w) {
+  const key = w.y + '-' + w.mo + '-' + w.d;
+  const day0 = fromWall(w.y, w.mo, w.d, 0, 0, 0, 0, MSK);
+  const pct = ms => clamp((ms - day0) / DAY * 100, 0, 100).toFixed(2) + '%';
+  if (key !== dayKey) {
+    dayKey = key;
+    const m = dayMarks(t);
+    $('#dlFill').style.background = 'linear-gradient(90deg, var(--night) 0%, var(--night) ' + pct(m.dawn) +
+      ', var(--acc3) ' + pct(m.rise) + ', var(--acc) ' + pct(m.rise + (m.noon - m.rise) * .35) + ', var(--acc2) ' + pct(m.noon) +
+      ', var(--acc) ' + pct(m.set - (m.set - m.noon) * .35) + ', var(--acc3) ' + pct(m.set) + ', var(--night) ' + pct(m.dusk) + ', var(--night) 100%)';
+    $('#dlLabels').innerHTML = '<span style="left:0;transform:none">00</span><span class="sun" style="left:' + pct(m.rise) + '">↑ ' + hm(m.rise) +
+      '</span><span style="left:' + pct(m.noon) + '">' + hm(m.noon) + '</span><span class="sun" style="left:' + pct(m.set) + '">↓ ' + hm(m.set) +
+      '</span><span style="left:100%;transform:translateX(-100%)">24</span>';
+  }
+  $('#dlNow').style.left = pct(t);
+}
 mkRow('#wSky', 'sun', 'sun', { run: 'sun()' });
 mkRow('#wSky', 'moon', 'moon', { run: 'moon()' });
 mkRow('#wSky', 'season', 'season', { run: 'season()' });
@@ -4060,7 +4308,6 @@ const jobsBox = document.createElement('div');
 jobsBox.className = 'jobs-list';
 $('#wJobs').appendChild(jobsBox);
 
-const bar10 = (f, n) => { n = n || 16; const k = clamp(Math.round(f * n), 0, n); return '<span class="bar10">' + '█'.repeat(k) + '<i>' + '░'.repeat(n - k) + '</i></span> ' + (f * 100).toFixed(1) + '%'; };
 let lastSlow = 0, lastJobsHtml = '';
 function updatePanelJobs() {
   let h = '';
@@ -4080,9 +4327,12 @@ jobsChanged = updatePanelJobs;
 
 function frame() {
   const t = now(), w = wall(t, MSK);
-  $('#clk').innerHTML = pad(w.h) + '<span class="colon">:</span>' + pad(w.mi) + '<span class="colon">:</span>' + pad(w.s) + (CFG.ms ? '<span class="ms">.' + pad(w.ms, 3) + '</span>' : '');
+  const digits = pad(w.h) + pad(w.mi) + pad(w.s);
+  for (let i = 0; i < 6; i++) setDigit(SLOTS[i], digits[i]);
+  $('#clkMs').textContent = CFG.ms ? '.' + pad(w.ms, 3) : '';
+  setTicks(w.s);
   setRow('unixms', '<span class="t-num">' + Math.floor(t) + '</span>');
-  $('#sClock').textContent = pad(w.h) + ':' + pad(w.mi) + ':' + pad(w.s) + ' MSK';
+  $('#sClock').textContent = $('#tClock').textContent = pad(w.h) + ':' + pad(w.mi) + ':' + pad(w.s) + ' MSK';
   if (Date.now() - lastSlow > 250) { lastSlow = Date.now(); slow(t, w); }
 }
 function slow(t, w) {
@@ -4100,12 +4350,13 @@ function slow(t, w) {
     : s.status === 'ok' ? '<span class="' + (Math.abs(s.offset) < 500 ? 'okc' : 'warnc') + '">●</span> ' + (s.offset >= 0 ? '+' : '−') + humanDur(Math.abs(s.offset)) + ' ±' + acc + 'мс'
     : '<span class="badc">●</span> системные часы');
   const secOfDay = w.h * 3600 + w.mi * 60 + w.s + w.ms / 1000;
-  setRow('day', bar10(secOfDay / 86400));
-  setRow('week', bar10((((w.wd + 6) % 7) * 86400 + secOfDay) / (7 * 86400)));
+  setProg('day', secOfDay / 86400);
+  setProg('week', (((w.wd + 6) % 7) * 86400 + secOfDay) / (7 * 86400));
+  renderDayline(t, w);
   const dim = new Date(Date.UTC(w.y, w.mo + 1, 0)).getUTCDate();
-  setRow('month', bar10(((w.d - 1) * 86400 + secOfDay) / (dim * 86400)));
+  setProg('month', (((w.d - 1) * 86400 + secOfDay) / (dim * 86400)));
   const ylen = (Date.UTC(w.y + 1, 0, 1) - Date.UTC(w.y, 0, 1)) / 1000;
-  setRow('year', bar10(((doy(w.y, w.mo, w.d) - 1) * 86400 + secOfDay) / ylen));
+  setProg('year', (((doy(w.y, w.mo, w.d) - 1) * 86400 + secOfDay) / ylen));
   if (!slow.sky || t - slow.sky > 30000) {
     slow.sky = t;
     const so = solar(t, LAT, LON), m = dayMarks(t);
@@ -4175,9 +4426,71 @@ document.addEventListener('keydown', () => audio(), { once: true });
 /* ==========================================================================
    21. Старт
    ========================================================================== */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function typeAndRun(line) {
+  if (!RM) {
+    await sleep(260);
+    for (let i = 1; i <= line.length; i++) { setInput(line.slice(0, i)); await sleep(26 + Math.random() * 34); }
+    await sleep(220);
+    setInput('');
+  }
+  await submit(line, { noHistory: true });
+}
+
+/* --- живой фон: тёплые туманности и искры --- */
+(() => {
+  const cv = $('#bg'), cx = cv.getContext('2d');
+  if (!cx) return;
+  let W = 0, H = 0, dpr = 1, acc = [255, 122, 26], acc2 = [255, 176, 58], light = false;
+  const sparks = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random(), r: .4 + Math.random() * 1.6, v: .00004 + Math.random() * .00016, ph: Math.random() * 6.28, dx: (Math.random() - .5) * .00005 }));
+  const rgb = c => { const m = /#?([\da-f]{2})([\da-f]{2})([\da-f]{2})/i.exec(c.trim()); return m ? m.slice(1).map(h => parseInt(h, 16)) : null; };
+  function readColors() {
+    const cs = getComputedStyle(document.documentElement);
+    acc = rgb(cs.getPropertyValue('--acc')) || acc; acc2 = rgb(cs.getPropertyValue('--acc2')) || acc2;
+    light = cs.getPropertyValue('color-scheme').trim() === 'light';
+  }
+  function resize() { dpr = Math.min(2, devicePixelRatio || 1); W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr; }
+  resize(); readColors();
+  addEventListener('resize', resize);
+  new MutationObserver(readColors).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
+  const blob = (x, y, r, c, a) => {
+    const g = cx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(' + c + ',' + a + ')'); g.addColorStop(1, 'rgba(' + c + ',0)');
+    cx.fillStyle = g; cx.fillRect(x - r, y - r, r * 2, r * 2);
+  };
+  let last = 0;
+  function draw(ts) {
+    requestAnimationFrame(draw);
+    if (document.hidden || ts - last < 33) return;
+    last = ts;
+    const t = ts / 1000, k = light ? .55 : 1;
+    cx.clearRect(0, 0, W, H);
+    blob(W * (.78 + .08 * Math.sin(t * .11)), H * (.12 + .06 * Math.cos(t * .13)), Math.max(W, H) * .55, acc.join(','), .16 * k);
+    blob(W * (.12 + .07 * Math.cos(t * .09)), H * (.9 + .05 * Math.sin(t * .12)), Math.max(W, H) * .5, acc2.join(','), .1 * k);
+    blob(W * (.45 + .2 * Math.sin(t * .05)), H * (.55 + .15 * Math.cos(t * .07)), Math.max(W, H) * .3, '255,61,90', .05 * k);
+    for (const p of sparks) {
+      p.y -= p.v; p.x += p.dx;
+      if (p.y < -.02) { p.y = 1.02; p.x = Math.random(); }
+      const a = (.25 + .35 * Math.sin(t * 1.4 + p.ph)) * (light ? .5 : 1);
+      cx.beginPath(); cx.arc(p.x * W, p.y * H, p.r * dpr, 0, 6.283);
+      cx.fillStyle = 'rgba(' + acc2.join(',') + ',' + Math.max(0, a) + ')';
+      cx.fill();
+    }
+  }
+  if (RM) { blob(W * .8, H * .1, Math.max(W, H) * .55, acc.join(','), .14); }
+  else requestAnimationFrame(draw);
+})();
+
 function banner() {
-  push('<span class="logo">█▀▄▀█ █▀ █▄▀   <i>█▀█ █▄█</i>\n█ ▀ █ ▄█ █ █ ▄ <i>█▀▀  █ </i></span>' +
-    '<b>msk.py 2.0</b> · Python-консоль московского времени · ' + esc(MSK) + ' (UTC' + fmtOffShort(tzOffset(Date.now(), MSK)) + ')\n' +
+  push('<span class="logo">' +
+    '███╗   ███╗███████╗██╗  ██╗   ██████╗ ██╗   ██╗\n' +
+    '████╗ ████║██╔════╝██║ ██╔╝   ██╔══██╗╚██╗ ██╔╝\n' +
+    '██╔████╔██║███████╗█████╔╝    ██████╔╝ ╚████╔╝ \n' +
+    '██║╚██╔╝██║╚════██║██╔═██╗    ██╔═══╝   ╚██╔╝  \n' +
+    '██║ ╚═╝ ██║███████║██║  ██╗██╗██║        ██║   \n' +
+    '╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝╚═╝╚═╝        ╚═╝   </span>' +
+    '<b>msk.py 2.1</b> · Python-консоль московского времени · ' + esc(MSK) + ' (UTC' + fmtOffShort(tzOffset(Date.now(), MSK)) + ')\n' +
     'Наберите <span class="t-bi">help()</span> — все команды, <span class="ylw">Tab</span> — дополнение, <span class="ylw">↑</span> — история, <span class="t-bi">timer</span>? — справка по функции.\n' +
     '<span class="cmt"># автозапуск: ' + esc(CFG.startup || '(выкл)') + ' — изменить: %startup …</span>', 'banner');
 }
@@ -4187,7 +4500,7 @@ async function init() {
   banner();
   render();
   if (CFG.startup) {
-    for (const line of CFG.startup.split(/;\s*|\n/).map(x => x.trim()).filter(Boolean)) await submit(line, { noHistory: true });
+    for (const line of CFG.startup.split(/;\s*|\n/).map(x => x.trim()).filter(Boolean)) await typeAndRun(line);
   }
   const h = (location.hash || '').replace(/^#/, '');
   if (h && /^\w+$/.test(h) && BUILTINS.has(h)) await submit(h + '()', { noHistory: true });
